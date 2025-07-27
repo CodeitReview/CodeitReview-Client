@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Codeit Footer Test",
+  "version": "1.0",
+  "permissions": ["scripting", "tabs", "activeTab"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}

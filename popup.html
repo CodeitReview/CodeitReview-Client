@@ -1,16 +1,331 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CodeitReview</title>
+  <style>
+    :root {
+      --light-purple00: #fbf5ff;
+      --light-purple05: #f8ecff;
+      --light-purple10: #e9ccff;
+      --light-purple15: #d4a4f9;
+      --light-purple20: #cd96f8;
+      --light-purple30: #c47cfd;
+      --light-purple40: #b363fd;
+      --light-purple50: #a64eff;
+      --light-purple60: #9933ff;
+      --light-purple70: #8f00ff;
+      --light-purple80: #760dde;
+      --light-purple90: #6500c2;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 380px;
+      min-height: 500px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, var(--light-purple00) 0%, var(--light-purple05) 100%);
+      color: var(--light-purple90);
+    }
+
+    .header {
+      background: var(--light-purple60);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(153, 51, 255, 0.2);
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .action-section {
+      margin-bottom: 25px;
+    }
+
+    .main-button {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, var(--light-purple50) 0%, var(--light-purple60) 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(153, 51, 255, 0.3);
+    }
+
+    .main-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(153, 51, 255, 0.4);
+    }
+
+    .main-button:active {
+      transform: translateY(0);
+    }
+
+    .main-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status-section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid var(--light-purple10);
+      box-shadow: 0 2px 10px rgba(153, 51, 255, 0.1);
+    }
+
+    .status-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--light-purple80);
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-content {
+      min-height: 100px;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid var(--light-purple10);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--light-purple00);
+      scroll-behavior: smooth;
+    }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--light-purple60);
+      font-size: 14px;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--light-purple10);
+      border-top: 2px solid var(--light-purple60);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .review-item {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-left: 4px solid var(--light-purple40);
+      box-shadow: 0 1px 3px rgba(153, 51, 255, 0.1);
+    }
+
+    .review-header {
+      display: flex;
+      justify-content: between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .reviewer-name {
+      font-weight: 600;
+      color: var(--light-purple80);
+      font-size: 13px;
+    }
+
+    .review-type {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: var(--light-purple10);
+      color: var(--light-purple70);
+    }
+
+    .review-content {
+      font-size: 12px;
+      color: var(--light-purple90);
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+
+    .review-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .code-count {
+      font-size: 11px;
+      color: var(--light-purple60);
+    }
+
+    .copy-button {
+      background: var(--light-purple30);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-button:hover {
+      background: var(--light-purple40);
+    }
+
+    .copy-all-section {
+      background: var(--light-purple05);
+      border-radius: 12px;
+      padding: 15px;
+      border: 1px solid var(--light-purple15);
+    }
+
+    .copy-all-button {
+      width: 100%;
+      padding: 12px;
+      background: var(--light-purple40);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .copy-all-button:hover {
+      background: var(--light-purple50);
+    }
+
+    .error {
+      color: #e74c3c;
+      background: #fee;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      border: 1px solid #fcc;
+    }
+
+    .success {
+      color: #27ae60;
+      background: #efe;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      border: 1px solid #cfc;
+    }
+
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      font-size: 12px;
+      color: var(--light-purple70);
+    }
+
+    .summary-item {
+      text-align: center;
+    }
+
+    .summary-number {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--light-purple80);
+    }
+  </style>
 </head>
 <body>
-    <button id="get-footer-btn">푸터 가져오기</button>
-    <pre id="output"></pre>
+  <div class="header">
+    <h1>🔍 CodeitReview</h1>
+    <p>GitHub 리뷰 추출 및 복사 도구</p>
+  </div>
 
-    <script src="getReivewList.js"></script>
-    <script src="getCodeByTurboFrame.js"></script>
-    <script src="popup.js"></script>
-  </body>
+  <div class="content">
+    <div class="action-section">
+      <button id="extract-reviews-btn" class="main-button">
+        📋 리뷰 추출하기
+      </button>
+    </div>
+
+    <div class="status-section">
+      <div class="status-title">
+        📊 추출 상태
+      </div>
+      <div id="status-content" class="status-content">
+        <div style="text-align: center; color: var(--light-purple60); padding: 30px 0;">
+          리뷰 추출 버튼을 클릭하여 시작하세요
+        </div>
+      </div>
+    </div>
+
+    <div id="results-section" style="display: none;">
+      <div class="status-section">
+        <div class="status-title">
+          📝 추출된 리뷰
+        </div>
+        
+        <div class="summary" id="summary">
+          <div class="summary-item">
+            <div class="summary-number" id="total-count">0</div>
+            <div>전체</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-number" id="code-count">0</div>
+            <div>코드 리뷰</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-number" id="non-code-count">0</div>
+            <div>일반 리뷰</div>
+          </div>
+        </div>
+
+        <div id="reviews-container" class="status-content">
+        </div>
+      </div>
+
+      <div class="copy-all-section">
+        <button id="copy-all-btn" class="copy-all-button">
+          📋 모든 리뷰 복사하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="getReivewList.js"></script>
+  <script src="getCodeByTurboFrame.js"></script>
+  <script src="popup.js"></script>
+</body>
 </html>

@@ -1,4 +1,4 @@
-const getReviewList = (url, html) => {
+const getReviewList = async (url, html) => {
 
   console.log("URL in Param: " + url);
 
@@ -202,6 +202,10 @@ const getReviewList = (url, html) => {
         console.log(JSON.stringify(reviewDataList, null, 2));
         console.log("================================");
         
+        // TODO: 서버 API 호출 함수 정의
+        // 여기서 서버 API 호출을 할 수 있습니다
+        // await sendReviewDataToServer(reviewDataList);
+        
         return {
           success: true,
           count: turboList.length,
@@ -214,6 +218,38 @@ const getReviewList = (url, html) => {
       success: false,
       error: "pullrequestreview 컨테이너를 찾을 수 없습니다."
     };
+  }
+};
+
+// TODO: 서버 API 호출 함수 정의
+// 서버 API 호출 함수 (예시)
+const sendReviewDataToServer = async (reviewDataList) => {
+  try {
+    console.log("=== 서버로 리뷰 데이터 전송 시작 ===");
+    
+    const response = await fetch('YOUR_API_ENDPOINT_HERE', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        reviews: reviewDataList,
+        timestamp: new Date().toISOString(),
+        // 필요한 추가 메타데이터
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API 호출 실패: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log("서버 응답:", result);
+    
+    return result;
+  } catch (error) {
+    console.error("API 호출 에러:", error);
+    throw error;
   }
 };
 

@@ -2,7 +2,7 @@ class ReviewExtractor {
   constructor() {
     this.reviewData = [];
     // API 베이스 URL 설정 (HTML에서 설정된 값 사용 또는 기본값)
-    this.API_BASE_URL = window.API_CONFIG?.BASE_URL || 'http://localhost:8080';
+    this.API_BASE_URL = window.API_CONFIG?.BASE_URL || 'https://gyural.shop';
     this.init();
   }
 

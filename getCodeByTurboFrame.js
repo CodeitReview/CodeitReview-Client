@@ -4,7 +4,6 @@ const getCodeByTurboFrame = (turboFrame) => {
     const codePathElement = turboFrame.querySelector('a.text-mono.text-small.Link--primary.wb-break-all.mr-2');
     const codePath = codePathElement ? codePathElement.textContent.trim() : '';
     
-    console.log("Code Path:", codePath);
     
     // 2) 코드 리스트 추출 - 더 포괄적인 선택자 사용
     const codeElements = turboFrame.querySelectorAll('td.blob-code span.blob-code-inner');
@@ -20,11 +19,6 @@ const getCodeByTurboFrame = (turboFrame) => {
           rawHTML: codeElement.innerHTML
         });
       }
-    });
-    
-    console.log("Found code lines:", codeList.length);
-    codeList.forEach((codeLine, index) => {
-      console.log(`Line ${codeLine.lineNumber}: ${codeLine.code}`);
     });
     
     // 3) 리뷰어 정보 추출 - 더 정확한 선택자

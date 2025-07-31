@@ -1,6 +1,8 @@
 class ReviewExtractor {
   constructor() {
     this.reviewData = [];
+    // API 베이스 URL 설정 (HTML에서 설정된 값 사용 또는 기본값)
+    this.API_BASE_URL = window.API_CONFIG?.BASE_URL || 'http://localhost:8080';
     this.init();
   }
 
@@ -87,9 +89,6 @@ class ReviewExtractor {
         try {
           await this.copyNotionFormatToClipboard(result.notionTemplate, pageData.url);
           this.showSuccess(`✅ 리뷰 추출 완료! Notion 템플릿이 클립보드에 복사되었습니다.`);
-          console.log("=== 클립보드에 복사된 Notion 템플릿 ===");
-          console.log(result.notionTemplate);
-          console.log("=====================================");
         } catch (clipboardError) {
           console.error("클립보드 복사 실패:", clipboardError);
           this.showSuccess(`총 ${this.reviewData.length}개의 리뷰를 추출했습니다. (클립보드 복사 실패)`);
@@ -231,8 +230,6 @@ class ReviewExtractor {
   // 모든 리뷰 복사
   async copyAllReviews() {
     try {
-      console.log("=== 모든 리뷰 복사 - 생성된 데이터 ===");
-      console.log("Original reviewData:", this.reviewData);
 
       // 모든 리뷰 데이터를 배열로 전달
       await this.copyNotionFormatToClipboard(this.reviewData);
@@ -286,8 +283,6 @@ class ReviewExtractor {
   // Notion 포맷으로 클립보드에 복사
   async copyNotionFormatToClipboard(reviewData, prURL) {
     try {
-      console.log("=== Notion 클립보드 복사 시작 ===");
-      console.log("Review data to copy:", reviewData);
       
       // 리뷰 데이터가 배열인지 개별 리뷰인지 확인
       let reviews = [];
@@ -300,7 +295,7 @@ class ReviewExtractor {
       }
 
       // AI 요약 생성
-      const aiSummary = this.generateAISummary(reviews);
+      const aiSummary = await this.generateAISummary(reviews, prURL);
       
       // 각 리뷰를 템플릿에 맞춰 포맷팅
       const formattedReviews = reviews.map((review, index) => {
@@ -308,8 +303,6 @@ class ReviewExtractor {
         const codeSection = review.withCodeField && review.codeList && review.codeList.length > 0 
           ? review.codeList.map(code => this.preserveCodeIndentation(code)).join('\n') 
           : 'No code changes';
-        console.log("Formatted code section:", codeSection);
-        console.log(review.codeList);
         const reviewerName = review.reviewerName || 'Unknown';
         const reviewerProfileUrl = review.profileImage || 'https://avatars.githubusercontent.com/u/default';
         const reviewContent = review.reviewContent || 'No comment';
@@ -347,9 +340,6 @@ ${codeSection}
       const combinedPlainText = aiSummary.plainText + '\n\n' + formattedReviews.map(r => r.plainText).join('\n\n');
       const combinedHtmlText = aiSummary.htmlText + '\n\n' + formattedReviews.map(r => r.htmlText).join('\n\n');
       
-      console.log("Generated plain text:", combinedPlainText);
-      console.log("Generated HTML:", combinedHtmlText);
-      
       // Plain text와 HTML을 별도의 클립보드 형식으로 복사
       const clipboardData = new ClipboardItem({
         'text/plain': new Blob([combinedPlainText], { type: 'text/plain' }),
@@ -357,7 +347,6 @@ ${codeSection}
       });
 
       await navigator.clipboard.write([clipboardData]);
-      console.log("=== 클립보드 복사 완료 (Plain Text + HTML) ===");
       
     } catch (error) {
       console.warn("클립보드 복사 실패, 일반 텍스트로 대체:", error);
@@ -375,7 +364,6 @@ Error loading code
 > 
 
 ---`;
-      console.log("Fallback - copying as plain text:", fallbackText);
       // 모든 포맷 실패시 일반 텍스트로 fallback
       await navigator.clipboard.writeText(fallbackText);
     }
@@ -515,8 +503,6 @@ Error loading code
         const leadingSpaces = rawText.match(/^(\s*)/);
         const spaceCount = leadingSpaces ? leadingSpaces[1].length : 0;
         
-        console.log(`Code line: "${codeItem.code}", Raw spaces: ${spaceCount}`);
-        
         // 원본 공백 + 코드 내용
         return ' '.repeat(spaceCount) + codeItem.code.trim();
       } catch (error) {
@@ -529,29 +515,87 @@ Error loading code
     return codeItem.code;
   }
 
-  // AI 요약 생성
-  generateAISummary(reviews) {
-    // 모든 리뷰 내용을 수집
-    const allReviewContents = reviews
-      .filter(review => review.reviewContent && review.reviewContent.trim())
-      .map(review => review.reviewContent.trim())
-      .join('…');
-    
-    // 요약 텍스트 생성 (실제 AI 요약 대신 샘플 텍스트 사용)
-    const summaryText = false || '코드리뷰 요약이 들어갈 예정입니다. 코드잇 리뷰를 사용해주셔서 감사합니다....!!';
-    
-    const plainText = `# ✨ **코드리뷰 요약**
+  // AI 요약 생성 (서버 API 호출)
+  async generateAISummary(reviews, prURL) {
+    try {
+      // 요청 body 구성
+      const codeReviewList = [];
+      const nonCodeReviewList = [];
+      
+      reviews.forEach(review => {
+        if (review.withCodeField && review.codeList && review.codeList.length > 0) {
+          // 코드 리뷰
+          const codeSection = review.codeList.map(code => this.preserveCodeIndentation(code)).join('\n');
+          codeReviewList.push({
+            comment: review.reviewContent || 'No comment',
+            code: codeSection
+          });
+        } else {
+          // 일반 리뷰
+          nonCodeReviewList.push({
+            comment: review.reviewContent || 'No comment'
+          });
+        }
+      });
+      
+      const requestBody = {
+        prURL: prURL || '',
+        codeReviewList: codeReviewList,
+        nonCodeReviewList: nonCodeReviewList
+      };
+      
+      // API 호출
+      const response = await fetch(`${this.API_BASE_URL}/api/v1/codereview/notion`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API 요청 실패: ${response.status}`);
+      }
+      
+      const result = await response.json(); // JSON으로 파싱
+      // 서버에서 받은 요약 사용 (응답 구조에 맞춰 수정)
+      let summaryText = '코드리뷰 요약이 들어갈 예정입니다. 코드잇 리뷰를 사용해주셔서 감사합니다....!!';
+
+      if (result && result.success) {
+        summaryText = result.message || summaryText;
+      }
+      const plainText = `# ✨ **코드리뷰 요약**
 
 > ${summaryText}
 >`;
 
-    const htmlText = `<meta charset='utf-8'><h1>✨ <strong>코드리뷰 요약</strong></h1>
+      const htmlText = `<meta charset='utf-8'><h1>✨ <strong>코드리뷰 요약</strong></h1>
 <blockquote>
 <p>${this.escapeHtml(summaryText)}</p>
 </blockquote>
 <!-- notionvc: ${this.generateNotionId()} -->`;
 
-    return { plainText, htmlText };
+      return { plainText, htmlText };
+      
+    } catch (error) {
+      console.error('AI 요약 API 호출 실패:', error);
+      
+      // API 실패시 기본 텍스트 사용
+      const summaryText = '코드리뷰 요약이 들어갈 예정입니다. 코드잇 리뷰를 사용해주셔서 감사합니다....!!';
+      
+      const plainText = `# ✨ **코드리뷰 요약**
+
+> ${summaryText}
+>`;
+
+      const htmlText = `<meta charset='utf-8'><h1>✨ <strong>코드리뷰 요약</strong></h1>
+<blockquote>
+<p>${this.escapeHtml(summaryText)}</p>
+</blockquote>
+<!-- notionvc: ${this.generateNotionId()} -->`;
+
+      return { plainText, htmlText };
+    }
   }
 
   // HTML 이스케이프

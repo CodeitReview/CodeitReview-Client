@@ -1,15 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "Codeit Footer Test",
-  "version": "1.0",
+  "name": "CodeitReview - GitHub 리뷰 추출기",
+  "version": "1.0.0",
+  "description": "GitHub Pull Request의 리뷰를 추출하여 Notion에 복사할 수 있는 확장 프로그램",
   "permissions": ["scripting", "tabs", "activeTab"],
+  "host_permissions": [
+    "https://github.com/*",
+    "https://gyural.shop/*"
+  ],
   "action": {
-    "default_popup": "popup.html"
-  },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
+    "default_popup": "popup.html",
+    "default_title": "CodeitReview",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
     }
-  ]
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
 }

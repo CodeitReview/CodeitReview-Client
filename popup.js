@@ -299,12 +299,17 @@ class ReviewExtractor {
         reviews = this.reviewData;
       }
 
+      // AI 요약 생성
+      const aiSummary = this.generateAISummary(reviews);
+      
       // 각 리뷰를 템플릿에 맞춰 포맷팅
       const formattedReviews = reviews.map((review, index) => {
         const reviewNumber = index + 1;
         const codeSection = review.withCodeField && review.codeList && review.codeList.length > 0 
-          ? review.codeList.map(code => code.code || '').join('\n') 
+          ? review.codeList.map(code => this.preserveCodeIndentation(code)).join('\n') 
           : 'No code changes';
+        console.log("Formatted code section:", codeSection);
+        console.log(review.codeList);
         const reviewerName = review.reviewerName || 'Unknown';
         const reviewerProfileUrl = review.profileImage || 'https://avatars.githubusercontent.com/u/default';
         const reviewContent = review.reviewContent || 'No comment';
@@ -324,25 +329,23 @@ ${codeSection}
 
 ---`;
 
-        const htmlText = `<meta charset='utf-8'><h1>Review ${reviewNumber}  반영 여부  ✅  or ❌ </h1>
+        const htmlText = `<h1>Review ${reviewNumber}  반영 여부  ✅  or ❌ </h1>
 <pre><code class="language-java">${this.escapeHtml(codeSection)}
 </code></pre>
 <div style="margin: 8px 0;">
-<h1>👨‍🏫 ${reviewerName}</h1>
-<p style="margin: 0; padding: 0;"><strong><a href="https://github.com/${reviewerName}">${reviewerName}</a> <a href="${prURL}">go to</a></strong></p>
+<h3>👨‍🏫 ${reviewerName}</h3>
 </div>
 <blockquote>
 <p>${this.escapeHtml(reviewContent)}</p>
 </blockquote>
-<hr>
-<!-- notionvc: ${this.generateNotionId()} -->`;
+<hr>`;
 
         return { plainText, htmlText };
       });
 
-      // 모든 리뷰를 하나의 텍스트로 결합
-      const combinedPlainText = formattedReviews.map(r => r.plainText).join('\n\n');
-      const combinedHtmlText = formattedReviews.map(r => r.htmlText).join('\n\n');
+      // AI 요약을 맨 앞에 추가하고 모든 리뷰를 하나의 텍스트로 결합
+      const combinedPlainText = aiSummary.plainText + '\n\n' + formattedReviews.map(r => r.plainText).join('\n\n');
+      const combinedHtmlText = aiSummary.htmlText + '\n\n' + formattedReviews.map(r => r.htmlText).join('\n\n');
       
       console.log("Generated plain text:", combinedPlainText);
       console.log("Generated HTML:", combinedHtmlText);
@@ -492,6 +495,63 @@ Error loading code
       "action": "copy",
       "wasContiguousSelection": true
     };
+  }
+
+  // 코드의 원본 들여쓰기 보존
+  preserveCodeIndentation(codeItem) {
+    if (!codeItem || !codeItem.code) {
+      return '';
+    }
+
+    // rawHTML이 있는 경우 원본 공백 수 계산
+    if (codeItem.rawHTML) {
+      try {
+        // rawHTML에서 실제 텍스트만 추출 (HTML 태그 제거)
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = codeItem.rawHTML;
+        const rawText = tempDiv.textContent || tempDiv.innerText || '';
+        
+        // 첫 번째 라인에서 앞쪽 공백 수 계산
+        const leadingSpaces = rawText.match(/^(\s*)/);
+        const spaceCount = leadingSpaces ? leadingSpaces[1].length : 0;
+        
+        console.log(`Code line: "${codeItem.code}", Raw spaces: ${spaceCount}`);
+        
+        // 원본 공백 + 코드 내용
+        return ' '.repeat(spaceCount) + codeItem.code.trim();
+      } catch (error) {
+        console.warn('rawHTML 처리 중 오류:', error);
+        return codeItem.code;
+      }
+    }
+    
+    // rawHTML이 없는 경우 기본 코드 반환
+    return codeItem.code;
+  }
+
+  // AI 요약 생성
+  generateAISummary(reviews) {
+    // 모든 리뷰 내용을 수집
+    const allReviewContents = reviews
+      .filter(review => review.reviewContent && review.reviewContent.trim())
+      .map(review => review.reviewContent.trim())
+      .join('…');
+    
+    // 요약 텍스트 생성 (실제 AI 요약 대신 샘플 텍스트 사용)
+    const summaryText = false || '코드리뷰 요약이 들어갈 예정입니다. 코드잇 리뷰를 사용해주셔서 감사합니다....!!';
+    
+    const plainText = `# ✨ **코드리뷰 요약**
+
+> ${summaryText}
+>`;
+
+    const htmlText = `<meta charset='utf-8'><h1>✨ <strong>코드리뷰 요약</strong></h1>
+<blockquote>
+<p>${this.escapeHtml(summaryText)}</p>
+</blockquote>
+<!-- notionvc: ${this.generateNotionId()} -->`;
+
+    return { plainText, htmlText };
   }
 
   // HTML 이스케이프

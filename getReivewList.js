@@ -274,27 +274,6 @@ const sendReviewDataToServer = async (reviewDataList) => {
     const result = await response.json();
     console.log("서버 응답:", result);
     
-    // 응답 포맷 예시:
-    // {
-    //   success: true,
-    //   message: "리뷰 데이터 처리 완료",
-    //   data: {
-    //     processedReviews: reviewDataList,
-    //     summary: {
-    //       totalCount: 5,
-    //       codeReviewCount: 3,
-    //       generalReviewCount: 2
-    //     },
-    //     notion: {
-    //       template: "📋 **리뷰 요약**\n\n**총 5개의 리뷰**\n- 코드 리뷰: 3개\n- 일반 리뷰: 2개\n\n---\n\n👤 **김개발자**\n📝 코드 리뷰\n💬 로직 개선이 필요합니다\n\n👤 **박리뷰어**\n📝 일반 리뷰\n💬 LGTM!\n\n---\n📅 " + new Date().toLocaleDateString() + " 생성",
-    //       templateId: "template_12345",
-    //       spaceId: "workspace_67890",
-    //       blockId: "block_abcdef",
-    //       generatedAt: new Date().toISOString()
-    //     }
-    //   }
-    // }
-    
     return result;
   } catch (error) {
     console.error("API 호출 에러:", error);

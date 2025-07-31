@@ -1,12 +1,5 @@
 const getCodeByTurboFrame = (turboFrame) => {
   try {
-    // turboFrame 전체 태그 텍스트 출력
-    // console.log("=== TURBO FRAME 전체 HTML ===");
-    // console.log("outerHTML:", turboFrame.outerHTML);
-    // console.log("innerHTML:", turboFrame.innerHTML);
-    // console.log("textContent:", turboFrame.textContent);
-    // console.log("=============================");
-    
     // 1) 코드 경로 추출 - 더 포괄적인 선택자 사용
     const codePathElement = turboFrame.querySelector('a.text-mono.text-small.Link--primary.wb-break-all.mr-2');
     const codePath = codePathElement ? codePathElement.textContent.trim() : '';

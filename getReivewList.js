@@ -202,9 +202,31 @@ const getReviewList = async (url, html) => {
         console.log(JSON.stringify(reviewDataList, null, 2));
         console.log("================================");
         
-        // TODO: 서버 API 호출 함수 정의
-        // 여기서 서버 API 호출을 할 수 있습니다
-        // await sendReviewDataToServer(reviewDataList);
+        // API 호출 비활성화 (개발 중)
+        // 서버 API 호출하고 notion 템플릿 클립보드 복사
+        // try {
+        //   const serverResult = await sendReviewDataToServer(reviewDataList);
+        //   
+        //   // 서버에서 notion 템플릿을 받았다면 클립보드에 복사
+        //   if (serverResult.success && serverResult.data && serverResult.data.notion && serverResult.data.notion.template) {
+        //     console.log("=== Notion 템플릿 클립보드 복사 ===");
+        //     console.log("템플릿 내용:", serverResult.data.notion.template);
+        //     
+        //     // 클립보드 복사는 popup.js에서 처리하도록 결과에 포함
+        //     return {
+        //       success: true,
+        //       count: turboList.length,
+        //       turboFrames: turboList,
+        //       reviewDataList: reviewDataList,
+        //       serverResponse: serverResult,
+        //       notionTemplate: serverResult.data.notion.template,
+        //       shouldCopyToClipboard: true
+        //     };
+        //   }
+        // } catch (serverError) {
+        //   console.error("서버 API 호출 실패:", serverError);
+        //   // 서버 에러가 있어도 로컬 데이터는 반환
+        // }
         
         return {
           success: true,
@@ -227,15 +249,21 @@ const sendReviewDataToServer = async (reviewDataList) => {
   try {
     console.log("=== 서버로 리뷰 데이터 전송 시작 ===");
     
-    const response = await fetch('YOUR_API_ENDPOINT_HERE', {
+    // TODO: 실제 API 엔드포인트로 변경해주세요
+    const API_ENDPOINT = 'https://your-api-domain.com/api/reviews/process';
+    
+    const response = await fetch(API_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // 필요하다면 인증 헤더 추가
+        // 'Authorization': 'Bearer YOUR_TOKEN'
       },
       body: JSON.stringify({
         reviews: reviewDataList,
         timestamp: new Date().toISOString(),
-        // 필요한 추가 메타데이터
+        source: 'github_extension',
+        version: '1.0.0'
       })
     });
     
@@ -245,6 +273,27 @@ const sendReviewDataToServer = async (reviewDataList) => {
     
     const result = await response.json();
     console.log("서버 응답:", result);
+    
+    // 응답 포맷 예시:
+    // {
+    //   success: true,
+    //   message: "리뷰 데이터 처리 완료",
+    //   data: {
+    //     processedReviews: reviewDataList,
+    //     summary: {
+    //       totalCount: 5,
+    //       codeReviewCount: 3,
+    //       generalReviewCount: 2
+    //     },
+    //     notion: {
+    //       template: "📋 **리뷰 요약**\n\n**총 5개의 리뷰**\n- 코드 리뷰: 3개\n- 일반 리뷰: 2개\n\n---\n\n👤 **김개발자**\n📝 코드 리뷰\n💬 로직 개선이 필요합니다\n\n👤 **박리뷰어**\n📝 일반 리뷰\n💬 LGTM!\n\n---\n📅 " + new Date().toLocaleDateString() + " 생성",
+    //       templateId: "template_12345",
+    //       spaceId: "workspace_67890",
+    //       blockId: "block_abcdef",
+    //       generatedAt: new Date().toISOString()
+    //     }
+    //   }
+    // }
     
     return result;
   } catch (error) {

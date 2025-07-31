@@ -82,6 +82,20 @@ class ReviewExtractor {
       this.reviewData = result.reviewDataList;
       this.showSuccess(`총 ${this.reviewData.length}개의 리뷰를 추출했습니다.`);
       
+      // 서버에서 notion 템플릿을 받았다면 자동으로 클립보드에 복사
+      if (result.shouldCopyToClipboard && result.notionTemplate) {
+        try {
+          await this.copyNotionFormatToClipboard(result.notionTemplate, pageData.url);
+          this.showSuccess(`✅ 리뷰 추출 완료! Notion 템플릿이 클립보드에 복사되었습니다.`);
+          console.log("=== 클립보드에 복사된 Notion 템플릿 ===");
+          console.log(result.notionTemplate);
+          console.log("=====================================");
+        } catch (clipboardError) {
+          console.error("클립보드 복사 실패:", clipboardError);
+          this.showSuccess(`총 ${this.reviewData.length}개의 리뷰를 추출했습니다. (클립보드 복사 실패)`);
+        }
+      }
+      
       // 결과 표시
       this.displayResults();
 
@@ -178,7 +192,6 @@ class ReviewExtractor {
         <div class="review-content">${this.truncateText(reviewContent, 100)}</div>
         <div class="review-meta">
           <span class="code-count">${codeInfo}</span>
-          <button class="copy-button" data-index="${index}">복사</button>
         </div>
       </div>
     `;
@@ -194,9 +207,9 @@ class ReviewExtractor {
   async copyIndividualReview(index) {
     try {
       const review = this.reviewData[index];
-      const formattedReview = this.formatReviewForCopy(review);
       
-      await navigator.clipboard.writeText(formattedReview);
+      // 개별 리뷰 데이터를 배열로 감싸서 전달
+      await this.copyNotionFormatToClipboard([review]);
       
       // 복사 버튼 상태 변경
       const button = this.reviewsContainer.querySelector(`[data-index="${index}"]`);
@@ -218,11 +231,11 @@ class ReviewExtractor {
   // 모든 리뷰 복사
   async copyAllReviews() {
     try {
-      const allReviewsText = this.reviewData
-        .map(review => this.formatReviewForCopy(review))
-        .join('\n\n---\n\n');
+      console.log("=== 모든 리뷰 복사 - 생성된 데이터 ===");
+      console.log("Original reviewData:", this.reviewData);
 
-      await navigator.clipboard.writeText(allReviewsText);
+      // 모든 리뷰 데이터를 배열로 전달
+      await this.copyNotionFormatToClipboard(this.reviewData);
       
       // 버튼 상태 변경
       const originalText = this.copyAllBtn.textContent;
@@ -242,29 +255,259 @@ class ReviewExtractor {
 
   // 리뷰를 복사용 텍스트로 포맷팅
   formatReviewForCopy(review) {
-    let formatted = `👤 리뷰어: ${review.reviewerName || '알 수 없음'}\n`;
-    formatted += `📝 타입: ${review.withCodeField ? '코드 리뷰' : '일반 리뷰'}\n`;
-    
-    if (review.withCodeField && review.codePath) {
-      formatted += `📁 파일: ${review.codePath}\n`;
-    }
-    
-    if (review.withCodeField && review.codeCount > 0) {
-      formatted += `🔢 코드 변경사항: ${review.codeCount}개\n`;
-    }
-    
-    if (review.reviewContent) {
-      formatted += `💬 내용: ${review.reviewContent}\n`;
-    }
-    
-    if (review.withCodeField && review.codeList && review.codeList.length > 0) {
-      formatted += `\n📋 코드 상세:\n`;
-      review.codeList.forEach((code, index) => {
-        formatted += `${index + 1}. ${code}\n`;
+    // 리뷰 데이터를 JSON 형태로 구조화
+    const reviewJson = {
+      reviewer: review.reviewerName || '알 수 없음',
+      type: review.withCodeField ? '코드 리뷰' : '일반 리뷰',
+      content: review.reviewContent || '',
+      ...(review.withCodeField && {
+        codePath: review.codePath,
+        codeCount: review.codeCount,
+        codeList: review.codeList
+      })
+    };
+
+    return JSON.stringify(reviewJson, null, 2);
+  }
+
+  // 모든 리뷰를 Notion 블록용으로 포맷팅
+  formatAllReviewsForNotion() {
+    return this.reviewData.map((review, index) => ({
+      index: index + 1,
+      reviewer: review.reviewerName || '알 수 없음',
+      type: review.withCodeField ? '코드 리뷰' : '일반 리뷰',
+      content: review.reviewContent || (review.withCodeField ? '코드 변경사항' : '승인/댓글'),
+      ...(review.withCodeField && review.codeCount && {
+        codeCount: review.codeCount
+      })
+    }));
+  }
+
+  // Notion 포맷으로 클립보드에 복사
+  async copyNotionFormatToClipboard(reviewData, prURL) {
+    try {
+      console.log("=== Notion 클립보드 복사 시작 ===");
+      console.log("Review data to copy:", reviewData);
+      
+      // 리뷰 데이터가 배열인지 개별 리뷰인지 확인
+      let reviews = [];
+      if (Array.isArray(reviewData)) {
+        // 모든 리뷰 복사인 경우
+        reviews = this.reviewData;
+      } else {
+        // 개별 리뷰 복사인 경우 - reviewData는 JSON 문자열이므로 원본 데이터를 찾아야 함
+        reviews = this.reviewData;
+      }
+
+      // 각 리뷰를 템플릿에 맞춰 포맷팅
+      const formattedReviews = reviews.map((review, index) => {
+        const reviewNumber = index + 1;
+        const codeSection = review.withCodeField && review.codeList && review.codeList.length > 0 
+          ? review.codeList.map(code => code.code || '').join('\n') 
+          : 'No code changes';
+        const reviewerName = review.reviewerName || 'Unknown';
+        const reviewerProfileUrl = review.profileImage || 'https://avatars.githubusercontent.com/u/default';
+        const reviewContent = review.reviewContent || 'No comment';
+        
+        const plainText = `# Review ${reviewNumber}  반영 여부  ✅  or ❌
+
+\`\`\`java
+${codeSection}
+\`\`\`
+
+[@${reviewerName}](${reviewerProfileUrl})
+
+**[${reviewerName}](https://github.com/${reviewerName}) [4 days ago](${prURL})**
+
+> ${reviewContent}
+> 
+
+---`;
+
+        const htmlText = `<meta charset='utf-8'><h1>Review ${reviewNumber}  반영 여부  ✅  or ❌ </h1>
+<pre><code class="language-java">${this.escapeHtml(codeSection)}
+</code></pre>
+<div style="margin: 8px 0;">
+<h1>👨‍🏫 ${reviewerName}</h1>
+<p style="margin: 0; padding: 0;"><strong><a href="https://github.com/${reviewerName}">${reviewerName}</a> <a href="${prURL}">go to</a></strong></p>
+</div>
+<blockquote>
+<p>${this.escapeHtml(reviewContent)}</p>
+</blockquote>
+<hr>
+<!-- notionvc: ${this.generateNotionId()} -->`;
+
+        return { plainText, htmlText };
       });
+
+      // 모든 리뷰를 하나의 텍스트로 결합
+      const combinedPlainText = formattedReviews.map(r => r.plainText).join('\n\n');
+      const combinedHtmlText = formattedReviews.map(r => r.htmlText).join('\n\n');
+      
+      console.log("Generated plain text:", combinedPlainText);
+      console.log("Generated HTML:", combinedHtmlText);
+      
+      // Plain text와 HTML을 별도의 클립보드 형식으로 복사
+      const clipboardData = new ClipboardItem({
+        'text/plain': new Blob([combinedPlainText], { type: 'text/plain' }),
+        'text/html': new Blob([combinedHtmlText], { type: 'text/html' })
+      });
+
+      await navigator.clipboard.write([clipboardData]);
+      console.log("=== 클립보드 복사 완료 (Plain Text + HTML) ===");
+      
+    } catch (error) {
+      console.warn("클립보드 복사 실패, 일반 텍스트로 대체:", error);
+      const fallbackText = `# Review 1  반영 여부  ✅  or ❌  ****
+
+\`\`\`java
+Error loading code
+\`\`\`
+
+[@Unknown](https://avatars.githubusercontent.com/u/default)
+
+**[Unknown](https://github.com/Unknown) [4 days ago](${prURL})**
+
+> Error loading review content
+> 
+
+---`;
+      console.log("Fallback - copying as plain text:", fallbackText);
+      // 모든 포맷 실패시 일반 텍스트로 fallback
+      await navigator.clipboard.writeText(fallbackText);
     }
+  }
+
+  // Plain text 포맷 생성 (JSON 형태로 깔끔하게)
+  formatAsPlainText(text) {
+    return text; // JSON 데이터를 그대로 사용
+  }
+
+  // Notion HTML 포맷 생성 (JSON을 코드 블록으로)
+  formatAsNotionHtml(text) {
+    const escapedText = this.escapeHtml(text);
+    return `<meta charset='utf-8'>
+<pre><code class="language-json">${escapedText}</code></pre>`;
+  }
+
+  // Notion 블록 구조 생성
+  generateNotionBlocks(text) {
+    const spaceId = this.generateNotionId();
+    const parentId = this.generateNotionId();
+    const currentTime = Date.now();
+    const userId = this.generateNotionId();
     
-    return formatted;
+    const headerBlockId = this.generateNotionId();
+    const codeBlockId = this.generateNotionId();
+    const quoteBlockId = this.generateNotionId();
+
+    return {
+      "blocks": [
+        {
+          "blockId": headerBlockId,
+          "blockSubtree": {
+            "__version__": 3,
+            "block": {
+              [headerBlockId]: {
+                "value": {
+                  "id": headerBlockId,
+                  "type": "header",
+                  "space_id": spaceId,
+                  "created_time": currentTime,
+                  "created_by_table": "notion_user",
+                  "created_by_id": userId,
+                  "version": 26,
+                  "parent_id": parentId,
+                  "parent_table": "block",
+                  "alive": true,
+                  "last_edited_time": currentTime + 1000,
+                  "last_edited_by_id": userId,
+                  "last_edited_by_table": "notion_user",
+                  "properties": {
+                    "title": [["Review 1"]]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "blockId": codeBlockId,
+          "blockSubtree": {
+            "__version__": 3,
+            "block": {
+              [codeBlockId]: {
+                "value": {
+                  "id": codeBlockId,
+                  "type": "code",
+                  "space_id": spaceId,
+                  "created_time": currentTime + 2000,
+                  "created_by_table": "notion_user",
+                  "created_by_id": userId,
+                  "version": 49,
+                  "parent_id": parentId,
+                  "parent_table": "block",
+                  "alive": true,
+                  "last_edited_time": currentTime + 3000,
+                  "last_edited_by_id": userId,
+                  "last_edited_by_table": "notion_user",
+                  "properties": {
+                    "language": [["JSON"]],
+                    "title": [[text]]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "blockId": quoteBlockId,
+          "blockSubtree": {
+            "__version__": 3,
+            "block": {
+              [quoteBlockId]: {
+                "value": {
+                  "id": quoteBlockId,
+                  "type": "quote",
+                  "space_id": spaceId,
+                  "created_time": currentTime + 4000,
+                  "created_by_table": "notion_user",
+                  "created_by_id": userId,
+                  "version": 170,
+                  "parent_id": parentId,
+                  "parent_table": "block",
+                  "alive": true,
+                  "last_edited_time": currentTime + 5000,
+                  "last_edited_by_id": userId,
+                  "last_edited_by_table": "notion_user",
+                  "properties": {
+                    "title": [["리뷰 내용입니다...."]]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "action": "copy",
+      "wasContiguousSelection": true
+    };
+  }
+
+  // HTML 이스케이프
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Notion 스타일 ID 생성 (UUID v4 형식)
+  generateNotionId() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 }
 

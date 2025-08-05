@@ -164,38 +164,38 @@ const getReviewList = async (url, html) => {
 };
 
 // 서버 API 호출 함수 (예시)
-const sendReviewDataToServer = async (reviewDataList) => {
-  try {
+// const sendReviewDataToServer = async (reviewDataList) => {
+//   try {
     
-    // TODO: 실제 API 엔드포인트로 변경해주세요
-    const API_ENDPOINT = 'https://your-api-domain.com/api/reviews/process';
+//     // TODO: 실제 API 엔드포인트로 변경해주세요
+//     const API_ENDPOINT = 'https://your-api-domain.com/api/reviews/process';
     
-    const response = await fetch(API_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // 필요하다면 인증 헤더 추가
-        // 'Authorization': 'Bearer YOUR_TOKEN'
-      },
-      body: JSON.stringify({
-        reviews: reviewDataList,
-        timestamp: new Date().toISOString(),
-        source: 'github_extension',
-        version: '1.0.0'
-      })
-    });
+//     const response = await fetch(API_ENDPOINT, {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//         // 필요하다면 인증 헤더 추가
+//         // 'Authorization': 'Bearer YOUR_TOKEN'
+//       },
+//       body: JSON.stringify({
+//         reviews: reviewDataList,
+//         timestamp: new Date().toISOString(),
+//         source: 'github_extension',
+//         version: '1.0.0'
+//       })
+//     });
     
-    if (!response.ok) {
-      throw new Error(`API 호출 실패: ${response.status}`);
-    }
+//     if (!response.ok) {
+//       throw new Error(`API 호출 실패: ${response.status}`);
+//     }
     
-    const result = await response.json();
+//     const result = await response.json();
     
-    return result;
-  } catch (error) {
-    console.error("API 호출 에러:", error);
-    throw error;
-  }
-};
+//     return result;
+//   } catch (error) {
+//     console.error("API 호출 에러:", error);
+//     throw error;
+//   }
+// };
 
 // ES6 export 제거하고 전역으로 사용 가능하게 함

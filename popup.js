@@ -3,6 +3,7 @@ class ReviewExtractor {
     this.reviewData = [];
     // API 베이스 URL 설정 (HTML에서 설정된 값 사용 또는 기본값)
     this.API_BASE_URL = window.API_CONFIG?.BASE_URL || 'https://gyural.shop';
+    // this.API_BASE_URL = window.API_CONFIG?.BASE_URL || 'http://localhost:8080';
     this.init();
   }
 
@@ -230,22 +231,40 @@ class ReviewExtractor {
   // 모든 리뷰 복사
   async copyAllReviews() {
     try {
+      // 로딩 상태 시작
+      const originalText = this.copyAllBtn.textContent;
+      this.copyAllBtn.disabled = true;
+      this.copyAllBtn.classList.add('loading');
+      this.copyAllBtn.textContent = '';
 
       // 모든 리뷰 데이터를 배열로 전달
       await this.copyNotionFormatToClipboard(this.reviewData);
       
-      // 버튼 상태 변경
-      const originalText = this.copyAllBtn.textContent;
+      // 성공 상태
+      this.copyAllBtn.classList.remove('loading');
       this.copyAllBtn.textContent = '✅ 복사 완료!';
       this.copyAllBtn.style.background = '#27ae60';
       
       setTimeout(() => {
         this.copyAllBtn.textContent = originalText;
         this.copyAllBtn.style.background = '';
+        this.copyAllBtn.disabled = false;
       }, 2000);
 
     } catch (error) {
       console.error('전체 복사 실패:', error);
+      
+      // 에러 상태 복구
+      this.copyAllBtn.classList.remove('loading');
+      this.copyAllBtn.disabled = false;
+      this.copyAllBtn.textContent = '❌ 복사 실패';
+      this.copyAllBtn.style.background = '#e74c3c';
+      
+      setTimeout(() => {
+        this.copyAllBtn.textContent = '📋 모든 리뷰 복사하기';
+        this.copyAllBtn.style.background = '';
+      }, 2000);
+      
       alert('복사에 실패했습니다.');
     }
   }
